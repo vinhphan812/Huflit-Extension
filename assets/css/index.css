@@ -1,0 +1,302 @@
+/* width */
+::-webkit-scrollbar {
+	width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+	background: #f1f1f1;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+	background: #888;
+	transition: background 300ms;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
+
+body {
+	width: 400px;
+	height: 400px;
+	transition: height 800ms;
+}
+
+label {
+	padding: 16px 24px !important;
+}
+
+ul {
+	margin: 0;
+	padding: 0;
+	list-style-type: none;
+}
+
+#box-title {
+	transition: flex-direction linear 300ms;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: center;
+}
+
+#box-title:not(.col) {
+	height: 70px;
+	position: relative;
+}
+
+.col {
+	align-items: center !important;
+}
+
+#box-title:not(.col) .logo {
+	height: 70px;
+	width: 120px;
+	position: absolute;
+	left: 0;
+	margin: 1rem;
+}
+
+#box-title:not(.col) .title {
+	font-size: 24px;
+	margin-right: 1.5rem;
+}
+
+.title {
+	transition: font-size linear 300ms;
+}
+
+.logo {
+	height: 120px;
+	width: 200px;
+	transition: width linear 400ms, height linear 400ms;
+}
+.logo > img {
+	width: 100%;
+	height: 100%;
+}
+
+#menu {
+	width: 100%;
+	height: 70px;
+	opacity: 0;
+	z-index: 20;
+	transition: opacity 1000ms;
+}
+
+.opacity {
+	opacity: 1 !important;
+}
+
+#menu > ul {
+	background-color: #333;
+	color: #eee;
+	display: flex;
+	justify-content: center;
+	justify-content: center;
+	height: 100%;
+}
+
+#menu > ul > li {
+	display: flex;
+	flex-direction: column;
+	flex: 25%;
+	height: 100%;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	transition: background-color 300ms;
+}
+#menu > ul > li:hover {
+	background-color: #555;
+}
+
+#menu > ul > li:hover > span {
+	transform: translateY(0);
+}
+
+#menu > ul > li:hover > img {
+	transform: translateY(0);
+	opacity: 0.75;
+}
+
+#menu > ul > li > span {
+	user-select: none;
+	transform: translateY(-13px);
+	transition: transform 300ms;
+}
+
+#menu > ul > li > img {
+	opacity: 0;
+	width: 24px;
+	height: 24px;
+	transform: translateY(13px);
+	transition: opacity 300ms, transform 300ms;
+}
+
+.user {
+	text-align: center;
+}
+
+.schedule {
+	width: 100%;
+	height: 100%;
+	padding-top: 1rem;
+}
+
+.schedule > .listOfDays {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+}
+
+.schedule > .listOfDays > li {
+	padding: 0.25rem 0rem;
+	flex-grow: 1;
+	border: 1px solid #888;
+	text-align: center;
+	cursor: pointer;
+	user-select: none;
+	transition: color 300ms, background-color 300ms;
+}
+
+.schedule > .listOfDays > li.active {
+	color: #fff;
+	background-color: #333;
+}
+
+.schedule > .renderData {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+.schedule > .renderData > li {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+}
+
+.schedule > .renderData > li.active {
+	opacity: 1;
+	z-index: 10;
+}
+
+.schedule > .renderData > li.active > ul {
+	width: 100%;
+}
+
+.renderData > li > ul > li > div.subject {
+	display: flex;
+}
+
+.subject > .duration {
+	display: flex;
+	width: 50px;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.subject > .info {
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	padding: 0rem 0.5rem;
+}
+
+.subject > .info > .name {
+	font-weight: bold;
+}
+
+.subject > .info > .teacher {
+	color: #6c757d !important;
+}
+
+.subject > .room {
+	color: #6c757d !important;
+	display: flex;
+	width: 50px;
+	align-items: center;
+	justify-content: flex-end;
+}
+
+.mark {
+	width: 100%;
+	height: 100%;
+	position: relative;
+	margin-top: 1rem;
+	padding: 0 0 0 0.2rem !important;
+	background-color: #fff;
+}
+
+.mark > .total {
+	position: absolute;
+	bottom: 0;
+	height: 24px;
+	width: 100%;
+	display: flex;
+	justify-content: space-evenly;
+	align-items: center;
+	background-color: #fff;
+	z-index: 20;
+}
+
+.mark > ul {
+	position: absolute;
+	width: 100%;
+	top: 0;
+	bottom: 24px;
+}
+
+.mark > ul > li.sub {
+	padding: 1rem 0.5rem !important;
+	display: flex;
+	flex-direction: column;
+	margin: 0 0.5rem 1rem 0.5rem;
+}
+
+.mark > ul > li.sub > .info {
+	font-weight: 600;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.mark > ul > li.sub > .info > .name {
+	flex-grow: 1;
+}
+
+.sub .score,
+.sub .wordScore {
+	margin: 0 0.5rem;
+	text-align: center;
+}
+
+.sub .wordScore {
+	width: 30px;
+}
+
+.sub .score {
+	width: 40px;
+}
+
+.mark > ul > li.sub > .scoreDetail > .scoreComponent {
+	display: flex;
+	opacity: 0.75;
+}
+
+.mark > ul > li.sub > .scoreDetail > .scoreComponent > .content {
+	flex-grow: 1;
+	padding-left: 1rem;
+}
+
+.progress {
+	margin: 0.5rem 1rem;
+}
+
+.progress-bar {
+	-webkit-transition: none !important;
+	transition: none !important;
+}
