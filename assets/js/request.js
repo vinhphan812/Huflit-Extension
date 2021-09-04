@@ -202,20 +202,24 @@ class API_SERVER {
 					},
 				},
 			});
-			const res = new Array();
+			let res = new Array();
 			$("#load tbody>tr:not(:first)").each(function () {
 				if ($(this).attr("style") || $("td", this).length < 4)
 					return;
 				const sub = $("td", this);
-				if (checkContain(res, $(sub[2]).text()))
-					res.push(new Subject(sub));
+				res = res.filter((item) => {
+					if ($(sub[2]).text() != item.name) return item;
+				});
+				res.push(new Subject(sub));
 			});
 			this.render.mark(res);
 			resolve({ success: true, data: res });
 		});
 
-		function checkContain(data, check) {
-			return !data.find((item) => check == item.name);
+		function filterContain(data, check) {
+			return data.filter((item) => {
+				if (check != item.name) return;
+			});
 		}
 		function Subject(data) {
 			const survey = $("a", data[4]).attr("href"),
