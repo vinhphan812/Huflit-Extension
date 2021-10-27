@@ -23,7 +23,11 @@ class API_SERVER {
 					query: data.URI.query,
 				}),
 			option = {
-				method: typeof data.form == "object" ? "POST" : "GET",
+				method:
+					typeof data.form == "object" ||
+					(typeof data.form == "string" && data.form.length)
+						? "POST"
+						: "GET",
 				headers: {
 					"Content-Type": data.json
 						? "application/json"
@@ -36,7 +40,6 @@ class API_SERVER {
 			option.body = data.json
 				? JSON.stringify(data.form)
 				: formData(data.form);
-
 		return fetch(url, option);
 	}
 	requestLoad(requestOption, query) {
@@ -208,7 +211,11 @@ class API_SERVER {
 					return;
 				const sub = $("td", this);
 				res = res.filter((item) => {
-					if ($(sub[2]).text() != item.name) return item;
+					if (
+						$(sub[2]).text() != item.name ||
+						$(sub[4]).attr("href") != item.survey
+					)
+						return item;
 				});
 				res.push(new Subject(sub));
 			});
@@ -241,9 +248,8 @@ class API_SERVER {
 				this.survey = survey || null;
 			}
 
-			this.detailCode = $("img", data[7])
-				.attr("onclick")
-				.split("'")[1];
+			this.detailCode =
+				$("img", data[7])?.attr("onclick")?.split("'")[1] || "";
 		}
 	}
 	getDetailMark(detail) {
@@ -294,16 +300,23 @@ class API_SERVER {
 					form: {
 						curClassId: params.classId,
 						sid: params.SID,
-						studyYearId: params.studyYearId,
+						studyYearId: params.YearStudy,
 						termId: params.TermID,
 					},
+					json: true,
 				})
 			).json();
 
 			var res = await (
 				await this.requestServer({
 					link: url.split("?")[0] + "/SendAnswer",
-					form: rating(data),
+					form: {
+						answerObject: rating(JSON.parse(data.d)),
+						informationContent: "{}",
+						captchaText: "",
+						classId: params.classId,
+						sid: params.SID,
+					},
 					json: true,
 				})
 			).json();
@@ -312,25 +325,26 @@ class API_SERVER {
 			else resolve({ success: false, msg: res });
 
 			function rating(data) {
-				let { RatingTemplate } = data;
+				let { RatingTemplates } = data;
 
-				for (let parent in RatingTemplate) {
-					var questions = RatingTemplate[parent].QuestionDTOs,
-						answer = RatingTemplate[parent].AnswerDTOs;
+				for (let parent in RatingTemplates) {
+					var questions = RatingTemplates[parent].QuestionDTOs,
+						answer = RatingTemplates[parent].AnswerDTOs;
 					for (var i in questions) {
 						if (answer.length) {
 							questions[i] = checkAnswer(
 								questions[i],
-								answer[type].Id
+								answer[4].Id
 							);
 						} else
 							questions[i].AnswerDTOs[0].TextAnswer =
 								"Khong";
 					}
-					RatingTemplate[parent].QuestionDTOs = questions;
+					RatingTemplates[parent].QuestionDTOs = questions;
 				}
-				data.RatingTemplate = RatingTemplate;
-				return JSON.parse(data);
+				data.RatingTemplates = RatingTemplates;
+
+				return JSON.stringify(data);
 			}
 			function checkAnswer(question, answerId) {
 				if (!question.ChildQuestions)

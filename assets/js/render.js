@@ -171,12 +171,15 @@ class Render {
 						<div>Failed: </div>
 					</div>
 				</div>`;
-
 		this.root.html(a);
+		$(".alert-primary .progress").remove();
 		total();
 
-		$(".survey").click(function () {
-			api.survey($(this).attr("data-url"));
+		$(".survey").click(async function () {
+			const { success, msg } = await api.survey(
+				$(this).attr("data-url")
+			);
+			if (success) $(this).remove();
 		});
 
 		function total() {
@@ -191,7 +194,7 @@ class Render {
 		}
 
 		function renderItem(i) {
-			i.isDone & scroreDetail(i.detailCode);
+			if (i.isDone && i.detailCode) scroreDetail(i.detailCode);
 
 			return `<li class="sub alert alert-${
 				!i.isDone ? "primary" : checkPassed(i.passed)
