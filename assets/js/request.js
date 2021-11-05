@@ -49,51 +49,53 @@ class API_SERVER {
 			resolve(await loadHtml(res, query));
 		});
 	}
-	auth(doneCallback) {
+	auth(callback) {
 		if (this.winId)
 			return chrome.windows.update(this.winId, { focused: true });
 		else
 			return new Promise(async (resolve, reject) => {
-				checkTabLogin = checkTabLogin.bind(this);
-				closeTabLogin = closeTabLogin.bind(this);
-				doneCallback = doneCallback.bind(this);
+				checkAuth = checkAuth.bind(this);
+				closeAuth = closeAuth.bind(this);
+				callback = callback.bind(this);
 
-				const win = await chrome.windows.create({
+				const win = await popupAuthTab(),
+					homePath = "https://portal.huflit.edu.vn/Home",
+					loginTab = win.tabs[0].id;
+
+				this.winId = win.id;
+
+				chrome.tabs.onRemoved.addListener(closeAuth);
+				chrome.tabs.onUpdated.addListener(checkAuth);
+
+				function popupAuthTab() {
+					return chrome.windows.create({
 						url: "https://portal.huflit.edu.vn/Login",
 						height: 800,
 						width: 500,
 						top: Math.round(screen.availHeight / 2 - 400),
 						left: Math.round(screen.availWidth / 2 - 250),
 						type: "popup",
-					}),
-					home = "https://portal.huflit.edu.vn/Home",
-					idLogin = win.tabs[0].id;
+					});
+				}
 
-				this.winId = win.id;
-
-				chrome.tabs.onRemoved.addListener(closeTabLogin);
-				chrome.tabs.onUpdated.addListener(checkTabLogin);
-
-				function closeTabLogin(tabId) {
-					if (tabId != idLogin) return;
+				function closeAuth(tabId) {
+					if (tabId != loginTab) return;
 					this.winId = "";
 					clearEvent();
 					return resolve(false);
 				}
 
-				function checkTabLogin(tabId, state, tab) {
-					if (state.status == "complete") {
-						if (tabId == idLogin && tab.url == home) {
-							chrome.tabs.remove(tabId);
-							clearEvent();
-							doneCallback();
-							resolve(true);
-						}
+				function checkAuth(tabId, { status, url }, tab) {
+					if (status == "loading" && url == homePath) {
+						chrome.windows.remove(this.winId);
+						clearEvent();
+						callback();
+						resolve(true);
 					}
 				}
 				function clearEvent() {
-					chrome.tabs.onRemoved.removeListener(closeTabLogin);
-					chrome.tabs.onUpdated.removeListener(checkTabLogin);
+					chrome.tabs.onRemoved.removeListener(closeAuth);
+					chrome.tabs.onUpdated.removeListener(checkAuth);
 				}
 			});
 	}
@@ -149,7 +151,6 @@ class API_SERVER {
 						YearStudy: year,
 						TermID: term,
 						Week: week,
-						t: 0.567326047277148,
 					},
 				},
 			});
