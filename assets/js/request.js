@@ -136,7 +136,7 @@ class API_SERVER {
 
 				year = getOptionVal(select[0]);
 				term = getOptionVal(select[1]);
-				week = +getOptionVal(select[2]) + 5;
+				week = +getOptionVal(select[2]) + 8;
 
 				this.data = { year, term, week };
 
