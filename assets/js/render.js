@@ -1,6 +1,6 @@
 class Render {
 	root = $("#root");
-	menu = ["Schedule", "Mark", "Password", "Logout"];
+	menu = ["Schedule", "Mark", "Exam", "Logout"];
 	dayOfWeek = [
 		"Thứ 2",
 		"Thứ 3",
@@ -43,12 +43,13 @@ class Render {
 	}
 	Login() {
 		const LoginButton =
-			'<button class="btn btn-primary" id="login">Đăng Nhập Bằng Portal</button>';
+			'<button class="btn btn-primary" id="login">Đăng Nhập Bằng Portal</button><div id="info" class="mt-2"><span>🚀 Developed by </span><a href="https://fb.com/100008074634782" target="_blank">Vinh Phan</a></div>';
+
 		this.root.html(LoginButton);
 
 		$("#login").click(() => api.auth(api.getSchedule));
 	}
-	main(name = "", schedule = []) {
+	Main(name = "", schedules = []) {
 		const list = this.menu.map(
 			(item) =>
 				`<li id="${item}"><img src="./assets/img/${item}.png"/><span>${item}</span></li>`
@@ -66,20 +67,21 @@ class Render {
 		$("#Logout").click(() => api.Logout());
 		$("#Schedule").click(() => api.getSchedule());
 		$("#Mark").click(() => api.getMark());
-		$("#Password").click(() => this.password());
+		$("#Exam").click(() => api.getExam());
 
-		if (schedule.length) {
-			this.schedule(schedule);
+		if (schedules.length) {
+			this.Schedule(schedules);
 		}
 
 		function effectLogin() {
 			$("#login").remove();
 			$("#root").css("hidden");
+			$("#info").remove();
 			$("body").css("height", "500px");
 			$("#box-title").removeClass("col");
 		}
 	}
-	schedule(schedule) {
+	Schedule(schedules) {
 		filter = filter.bind(this);
 		renderSubject = renderSubject.bind(this);
 
@@ -126,8 +128,8 @@ class Render {
 			$(`.renderData`).append(`<li id="t${i}">${p}</li>`);
 		}
 
-		function renderSubject(item) {
-			const [s, e] = item.TietHoc.split("-");
+		function renderSubject({ MonHoc, TietHoc, GiaoVien, Phong }) {
+			const [s, e] = TietHoc.split("-");
 
 			return `<li class="list-group-item pe-4">
 					<div class="subject">
@@ -136,15 +138,15 @@ class Render {
 							<div>${this.time.end(e)}</div>
 						</div>
 					<div class="info">
-						<div class="name">${item.MonHoc}</div>
-						<small class="teacher">👨‍🏫 ${item.GiaoVien}</small>
+						<div class="name">${MonHoc}</div>
+						<small class="teacher">👨‍🏫 ${GiaoVien}</small>
 					</div>
-					<small class="room">${item.Phong}</small>
+					<small class="room">${Phong}</small>
 				</div>
 		 	</li>`;
 		}
 		function filter(i) {
-			return schedule.filter((item) => {
+			return schedules.filter((item) => {
 				if (item.Thu == this.dayOfWeek[i]) return item;
 			});
 		}
@@ -160,26 +162,35 @@ class Render {
 			return today == 0 ? 6 : today - 1;
 		}
 	}
-	mark(mark) {
-		const a = `<div class="mark">
-					<ul class='list-group list-group-flush overflow-auto'>
-						${mark.map(renderItem).join("")}
-					</ul>
-					<div class="total">
-						<div>Total: </div>
-						<div>Passed: </div>
-						<div>Failed: </div>
-					</div>
-				</div>`;
-		this.root.html(a);
-		$(".alert-primary .progress").remove();
-		total();
+	Mark(marks) {
+		return new Promise(async (resolve, rreject) => {
+			const a = `<div class="mark">
+						<ul class='list-group list-group-flush overflow-auto'>
+							${marks.map(renderItem).join("")}
+						</ul>
+						<div class="total">
+							<div>Total: </div>
+							<div>Passed: </div>
+							<div>Failed: </div>
+						</div>
+					</div>`;
+			this.root.html(a);
 
-		$(".survey").click(async function () {
-			const { success, msg } = await api.survey(
-				$(this).attr("data-url")
-			);
-			if (success) $(this).remove();
+			for (const { isDone, detailCode } of marks) {
+				//TODO phải delay để server trường có thể phản hồi
+				await delay();
+				if (isDone && detailCode) await scroreDetail(detailCode);
+			}
+			total();
+
+			$("#load").html("");
+
+			$(".survey").click(async function () {
+				const { success, msg } = await api.survey(
+					$(this).attr("data-url")
+				);
+				if (success) $(this).remove();
+			});
 		});
 
 		function total() {
@@ -194,14 +205,12 @@ class Render {
 		}
 
 		function renderItem(i) {
-			if (i.isDone && i.detailCode) scroreDetail(i.detailCode);
-
 			return `<li class="sub alert alert-${
 				!i.isDone ? "primary" : checkPassed(i.passed)
 			}">
 				${renderInfo(i)}
 				<div class="scoreDetail" id="${i.detailCode}">
-					${renderProgress()}	
+					${i.isDone && i.detailCode ? renderProgress() : ""}	
 				</div>
 		</li>`;
 		}
@@ -220,7 +229,7 @@ class Render {
 		}
 
 		function renderSurvey(survey) {
-			return `<button class="btn btn-primary survey" data-url="${survey}">Survey</button>`;
+			return `<button class="btn link-primary text-decoration-underline survey" data-url="${survey}">đánh giá</button>`;
 		}
 		function surveyOrScore(data) {
 			return data.survey
@@ -259,7 +268,33 @@ class Render {
 			}
 		}
 	}
-	password() {
-		this.root.html("password");
+	Exam(exams) {
+		this.root.html(
+			`<div class="exams">
+				<ul class='list-group list-group-flush overflow-auto'>
+				</ul>
+			</div>`
+		);
+
+		if (exams.length) return $(".exams ul").html(exams.map(renderItem));
+
+		$(".exams")
+			.html(`<div class="mx-1 d-flex justify-content-center align-items-center h-100">
+			<div class="h4 text-muted">Chưa có lịch thi cho kì này!</div>
+		</div>`);
+
+		function renderItem(e) {
+			return `<li class="alert alert-primary mx-1">
+				<div class="h5 d-flex justify-content-between">
+					<div>${e.name}</div>
+					<div>${e.room}</div>
+				</div>
+				<div class="text-muted d-flex justify-content-between">
+					<div>${`${e.time} ${e.date}`}</div>
+					<div>${e.duration + " phút"}</div>
+					<div>${e.location}</div>
+				</div>
+			</li>`;
+		}
 	}
 }

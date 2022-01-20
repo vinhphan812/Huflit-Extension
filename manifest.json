@@ -1,8 +1,8 @@
 {
-	"name": "HUFLIT (beta)",
-	"description": "HUFLIT (beta)",
+	"name": "HUFLIT EXTENSION",
+	"description": "HUFLIT EXTENSION with features: seen study schedule, exam schedule, show mark and auto survey subject.",
 	"manifest_version": 3,
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"background": {
 		"service_worker": "./background.js"
 	},

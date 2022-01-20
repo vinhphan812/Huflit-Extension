@@ -5,13 +5,15 @@ class API_SERVER {
 		this.isRender = false;
 		this.render = new Render();
 	}
+
 	setData(data) {
 		if (data.name) {
-			this.render.main(data.name, data.schedule);
+			this.render.Main(data.name, data.schedule);
 			this.isRender = true;
 			this.data = data;
 		} else this.render.Login();
 	}
+
 	requestServer(
 		data = { link, URI: { path: "", query: {} }, form: "", json: false }
 	) {
@@ -28,6 +30,7 @@ class API_SERVER {
 					(typeof data.form == "string" && data.form.length)
 						? "POST"
 						: "GET",
+				mode: "no-cors",
 				headers: {
 					"Content-Type": data.json
 						? "application/json"
@@ -42,13 +45,15 @@ class API_SERVER {
 				: formData(data.form);
 		return fetch(url, option);
 	}
+
 	requestLoad(requestOption, query) {
 		return new Promise(async (resolve, reject) => {
 			let res = await this.requestServer(requestOption);
-
-			resolve(await loadHtml(res, query));
+			await loadHtml(res, query);
+			resolve(res);
 		});
 	}
+
 	auth(callback) {
 		if (this.winId)
 			return chrome.windows.update(this.winId, { focused: true });
@@ -99,11 +104,16 @@ class API_SERVER {
 				}
 			});
 	}
+
 	checkCookie() {
 		return new Promise(async (resolve, reject) => {
-			await this.requestLoad({ URI: { path: "/Home" } });
+			await this.requestLoad({
+				URI: { path: "/Home/info" },
+			});
 
-			if ($("#load>title").text() == "Đăng nhập") {
+			const title = $("#load>title").text();
+
+			if (title == "" || title == "Đăng nhập") {
 				return resolve(false);
 			}
 
@@ -111,7 +121,7 @@ class API_SERVER {
 
 			if (!this.isRender || this.data.name != name) {
 				this.data.name = name;
-				this.render.main(name);
+				this.render.Main(name);
 				this.isRender = true;
 			}
 			setDataLocal(this.data);
@@ -119,10 +129,11 @@ class API_SERVER {
 			resolve(true);
 		});
 	}
+
 	getSchedule() {
 		return new Promise(async (resolve, reject) => {
 			//check cookie expire
-			if (!(await this.checkCookie(() => {})))
+			if (!(await this.checkCookie()))
 				return this.auth(this.getSchedule);
 
 			let { year, term, week } = this.data;
@@ -161,7 +172,7 @@ class API_SERVER {
 
 			this.data.schedule = res;
 			setDataLocal(this.data);
-			this.render.schedule(res);
+			this.render.Schedule(res);
 			resolve({ success: true, data: res });
 		});
 
@@ -176,13 +187,11 @@ class API_SERVER {
 		function splitText(query, selectIndex = 0, reg = / \(|: /g) {
 			return query.text().split(reg)[selectIndex] || "Unknown";
 		}
-		function getChild(data, i) {
-			return data.children(`:nth-child(${i})`);
-		}
 		function getOptionVal(select) {
 			return $("option:selected", select).val();
 		}
 	}
+
 	getMark() {
 		return new Promise(async (resolve, reject) => {
 			const check = await this.checkCookie();
@@ -220,7 +229,7 @@ class API_SERVER {
 				});
 				res.push(new Subject(sub));
 			});
-			this.render.mark(res);
+			this.render.Mark(res);
 			resolve({ success: true, data: res });
 		});
 
@@ -253,6 +262,7 @@ class API_SERVER {
 				$("img", data[7])?.attr("onclick")?.split("'")[1] || "";
 		}
 	}
+
 	getDetailMark(detail) {
 		const listScore = [],
 			select = "tbody>tr:not(:first)";
@@ -278,12 +288,13 @@ class API_SERVER {
 			};
 		}
 	}
-	survey(url, type) {
+
+	survey(url) {
 		const host = "esurvey.huflit.edu.vn",
 			path = "/FrontEnd/VoteRatingTemplate/Vote.aspx/GetData";
 
 		return new Promise(async (resolve, reject) => {
-			if (url == "null")
+			if (url)
 				return resolve({
 					success: false,
 					msg: "Không tìm thấy đường dẫn đánh giá",
@@ -364,7 +375,45 @@ class API_SERVER {
 			}
 		});
 	}
-	ChangePass() {}
+
+	getExam() {
+		return new Promise(async (resolve, reject) => {
+			const exams = [];
+			await this.requestLoad({
+				URI: {
+					path: "/Home/ShowExam",
+					query: {
+						YearStudy: this.data.year,
+						TermID: this.data.term,
+					},
+				},
+			});
+			const $exams = $("#load>table>tbody>tr");
+
+			if ($("#load table tbody tr td").text() != "Chưa có lịch thi")
+				$exams.each(function () {
+					const $exam = $(this);
+					const name = getChild($exam, 2).text(),
+						time = getChild($exam, 5).text(),
+						date = getChild($exam, 4).text(),
+						room = getChild($exam, 6).text(),
+						duration = +getChild($exam, 7).text(),
+						location = getChild($exam, 8).text();
+					exams.push({
+						name,
+						time,
+						date,
+						room,
+						duration,
+						location,
+					});
+				});
+
+			this.render.Exam(exams);
+			resolve(exams);
+		});
+	}
+
 	Logout() {
 		this.requestServer({ URI: { path: "/Login/Logout" } });
 		document.location.href = "/popup.html";

@@ -2,8 +2,21 @@
 
 ## Description
 
--    Version: **0.0.1**
+-    New version: **0.0.2**
 -    Not through 3rd server.
+
+## Release
+
+### [v0.0.1](../../releases/tag/v0.0.1)
+
+-    Login with account (portal page).
+-    **Schedule** for student.
+-    Show **Mark** and **Auto Survey** subject.
+
+### [v0.0.2](../../releases/tag/v0.0.2)
+
+-    Exam schedule.
+-    Login with Microsoft account.
 
 ## Installation
 
