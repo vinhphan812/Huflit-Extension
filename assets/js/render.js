@@ -1,6 +1,33 @@
 class Render {
 	root = $("#root");
-	menu = ["Schedule", "Mark", "Exam", "Logout"];
+	menu = ["Schedule", "Mark", "Exam", "Setting"];
+	vnMenu = ["TKB", "Điểm", "Lịch Thi", "Xem thêm"];
+	menuIcon = ["calendar3", "award", "card-list", "three-dots"];
+	settingMenu = [
+		{
+			id: "studyProgram",
+			name: "Chương trình đào tạo",
+			icon: "mortarboard",
+			isAction: true,
+		},
+		{
+			id: "finance",
+			name: "Tài chính sinh viên",
+			icon: "cash-coin",
+			isAction: true,
+		},
+		// {
+		// 	id: "report",
+		// 	name: "Báo cáo sự cố",
+		// 	icon: "exclamation-circle",
+		// 	isAction: true,
+		// },
+		{
+			id: "logout",
+			name: "Đăng Xuất",
+			icon: "box-arrow-right",
+		},
+	];
 	dayOfWeek = [
 		"Thứ 2",
 		"Thứ 3",
@@ -29,7 +56,9 @@ class Render {
 		start: (t) => this.time[t].s,
 		end: (t) => this.time[t].e,
 	};
-	constructor() {
+	constructor(store) {
+		this.historyTab = "";
+		this.store = store;
 		window.addEventListener("offline", (e) => {
 			api.state = false;
 			this.root.addClass("offline").removeClass("online");
@@ -42,17 +71,32 @@ class Render {
 		});
 	}
 	Login() {
-		const LoginButton =
-			'<button class="btn btn-primary" id="login">Đăng Nhập Bằng Portal</button><div id="info" class="mt-2"><span>🚀 Developed by </span><a href="https://fb.com/100008074634782" target="_blank">Vinh Phan</a></div>';
+		const LoginButton = `<button class="btn btn-primary my-4" id="login">Đăng Nhập Bằng Portal</button>
+						<div id="info" class="d-flex flex-column align-items-center fs-6 mt-auto">
+							<div class="mt-2 d-inline-block">
+								<span>💬 Chatbot Messenger tra cứu </span>
+								<a href="https://m.me/102388311946462" target="_blank" class="">
+									Thời Khóa Biểu
+								</a>
+							</div>
+							<div class="mt-2">
+								<span>🚀 Developed by </span>
+								<a href="https://fb.com/100008074634782" target="_blank">Vinh Phan</a>
+							</div>
+						</div>`;
 
 		this.root.html(LoginButton);
+		this.historyTab = "login";
 
 		$("#login").click(() => api.auth(api.getSchedule));
 	}
 	Main(name = "", schedules = []) {
 		const list = this.menu.map(
-			(item) =>
-				`<li id="${item}"><img src="./assets/img/${item}.png"/><span>${item}</span></li>`
+			(item, index) =>
+				`<li id="${item}">
+					<i class="bi bi-${this.menuIcon[index]} fs-1"></i>
+					<span>${this.vnMenu[index]}</span>
+				</li>`
 		);
 
 		effectLogin();
@@ -64,10 +108,15 @@ class Render {
 			)
 			.addClass("opacity");
 
-		$("#Logout").click(() => api.Logout());
-		$("#Schedule").click(() => api.getSchedule());
-		$("#Mark").click(() => api.getMark());
-		$("#Exam").click(() => api.getExam());
+		// $("#Logout").click(() => api.Logout());
+		$("#Setting").click(
+			() => this.historyTab != "setting" && this.Setting()
+		);
+		$("#Schedule").click(
+			() => this.historyTab != "schedule" && api.getSchedule()
+		);
+		$("#Mark").click(() => this.historyTab != "mark" && api.getMark());
+		$("#Exam").click(() => this.historyTab != "exam" && api.getExam());
 
 		if (schedules.length) {
 			this.Schedule(schedules);
@@ -95,6 +144,7 @@ class Render {
 				</div>`;
 
 		this.root.html(html);
+		this.historyTab = "schedule";
 
 		const $listOfDays = $(".listOfDays"),
 			$renderData = $(".renderData");
@@ -169,19 +219,21 @@ class Render {
 							${marks.map(renderItem).join("")}
 						</ul>
 						<div class="total">
-							<div>Total: </div>
-							<div>Passed: </div>
-							<div>Failed: </div>
+							<div>Total: --</div>
+							<div>Passed: --</div>
+							<div>Failed: --</div>
 						</div>
 					</div>`;
 			this.root.html(a);
+			this.historyTab = "mark";
+
+			total();
 
 			for (const { isDone, detailCode } of marks) {
 				//TODO phải delay để server trường có thể phản hồi
 				await delay();
 				if (isDone && detailCode) await scroreDetail(detailCode);
 			}
-			total();
 
 			$("#load").html("");
 
@@ -199,7 +251,10 @@ class Render {
 
 			function render(index) {
 				$(`.total>div:nth(${index})`).text(function () {
-					return this.textContent + $(query[index]).length;
+					return (
+						this.textContent.replaceAll("-", "") +
+						$(query[index]).length
+					);
 				});
 			}
 		}
@@ -276,6 +331,8 @@ class Render {
 			</div>`
 		);
 
+		this.historyTab = "exam";
+
 		if (exams.length) return $(".exams ul").html(exams.map(renderItem));
 
 		$(".exams")
@@ -295,6 +352,209 @@ class Render {
 					<div>${e.location}</div>
 				</div>
 			</li>`;
+		}
+	}
+	Setting() {
+		const html = `
+		<div class="list-group list-group-flush w-100 h-100 mt-4 settings"></div>
+
+		<div class="offcanvas offcanvas-bottom h-100" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
+			<div class="offcanvas-header">
+				<div class="name h3 m-0">
+					<i class="bi bi-palette"></i>
+					<span>Theme</span>
+				</div>
+			  	<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+			</div>
+			<div class="offcanvas-body"></div>
+		</div>`;
+		this.root.html(html);
+		this.historyTab = "setting";
+		//#region  init
+		const menuSettings = this.settingMenu.map(
+			({ id, name, icon, isAction }) => `
+				<button id="${id}" class="list-group-item list-group-item-action fs-5 ${
+				isAction ? "btn-offcanvas" : id
+			}">
+					<i class="me-2 bi bi-${icon}"></i>
+					<span>${name}</span>
+				</button>`
+		);
+
+		$(".settings").html(menuSettings);
+
+		const offcanvas = new bootstrap.Offcanvas($("#offcanvasRight")[0]);
+		$(".settings>button:not(.logout)").click(async function () {
+			const btn = $(this);
+
+			$(".offcanvas-body").html("");
+
+			// render name
+			$(".offcanvas>.offcanvas-header>.name").html(btn.html());
+
+			// show tab
+			offcanvas.show();
+
+			// get route
+			const page = await checkTab(btn[0].id);
+
+			// render body
+			$(".offcanvas-body").html(page);
+		});
+		$("button.logout").click(() => api.Logout());
+		//#endregion
+
+		async function checkTab(id) {
+			try {
+				let html = "";
+				switch (id) {
+					case "studyProgram":
+						html = await studyProgram();
+						break;
+					case "finance":
+						html = await finance();
+						break;
+					case "report":
+						// html = `<div class="alert alert-warning">Chỉ sử dụng tính năng này khi có lỗi xảy ra</div>
+						// 	<div>Gửi báo cáo đến thời khóa biểu</div>
+						// 	<div class="form-floating">
+						// 		<textarea class="form-control" placeholder="Nội dung báo cáo" id="floatingTextarea"></textarea>
+						// 		<label for="floatingTextarea">Báo cáo sự cố</label>
+						// 	</div>`;
+						html = `<div class='h-100 d-flex justify-content-center align-items-center'><div class='text-muted fs-3'>COMING SOON</div></div>`;
+						break;
+					default:
+						html =
+							"<div class='h-100 d-flex justify-content-center align-items-center'><div class='text-muted fs-3'>Không Tìm Thấy!</div></div>";
+						break;
+				}
+				return html;
+			} catch (error) {
+				console.log(error);
+				return "<div class='h-100 d-flex justify-content-center align-items-center'><div class='text-muted fs-3'>Xảy Ra Lỗi!</div></div>";
+			}
+		}
+		async function studyProgram() {
+			const res = await api.getStudyProgram();
+
+			return `<div class="accordion" id="studyAccordion">
+					${res.map(renderAccordion(renderHeader, renderBody)).join("")}
+				</div>`;
+
+			function renderHeader({ name, totalCredit }) {
+				return `<div class="fw-bold">${name}</div><div class="ms-5 text-muted">Số tín chỉ: ${totalCredit}</div>`;
+			}
+			function renderBody(data) {
+				return data.data.map(renderStudyItem).join("");
+
+				function renderStudyItem(item) {
+					const {
+						id,
+						name,
+						credit,
+						theory,
+						practical,
+						faculty,
+					} = item;
+					return `<div id="${id}" class="alert alert-dark">
+								<div class="h5">${name}</div>
+								<div class="text-muted">${faculty}</div>
+								<div class="d-flex justify-content-between fs-6">
+									<div>Tín Chỉ: ${credit}</div>
+									${theory ? `<div>Lý Thuyết: ${theory}</div>` : ""}
+									${practical ? `<div>Thực Hành: ${practical}</div>` : ""}
+									
+								</div>
+							</div>`;
+				}
+			}
+		}
+		async function finance() {
+			const { data, debt, paid, total } = await api.getFinance();
+			return `<div class="alert alert-primary w-75 mx-auto">
+				<div class="h3">Thống kê</div>
+				<table class="w-75 ms-2">
+					<tbody>
+						<tr>
+							<td>Tổng tiền</td>
+							<td>: ${total}</td>
+						</tr>
+						<tr>
+							<td>Đã đóng</td>
+							<td>: ${paid}</td>
+						</tr>
+						<tr>
+							<td>Còn nợ</td>
+							<td>: ${debt}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+			<div class="accordion" id="studyAccordion">
+				${data.map(renderAccordion(renderHeader, renderBody)).join("")}
+			</div>`;
+			function renderHeader({ year, term, fee, paid, debt }) {
+				return `<div class="fw-bold me-5">${year} ${term}</div><div class="${
+					fee == paid ? "text-muted" : "text-danger"
+				}">${fee}</div>`;
+			}
+			function renderBody({ debt, data, deadline }) {
+				return `<div class="badge mb-2 ${
+					debt != "0" ? "bg-danger" : ""
+				}">
+						${debt != "0" ? `Hạn chót: ${deadline}` : ""}
+					</div>
+						<ul class="list-group">
+						${data.map(renderItem).join("")}
+					</ul>`;
+				function renderItem({
+					name,
+					paymentDate,
+					fee,
+					paid,
+					debt,
+				}) {
+					return `<li class="list-group-item">
+						<div class="d-flex align-items-center">
+							<div class="flex-grow-1 d-flex flex-column justify-content-between">
+								<div class="h6">${name}</div>
+								<div class="fw-bold">${fee}</div>
+								${
+									debt != "0" && paid != "0"
+										? `<div class="text-danger">Đóng thiếu: ${debt}</div>`
+										: ""
+								}
+								
+							</div>
+							<div class="badge ${debt != "0" ? "bg-danger" : "bg-success"}">
+									<i class="fs-6 bi bi-${debt != "0" ? "x" : "check"}"></i>						
+							</div>
+						</div>
+					</li>`;
+				}
+			}
+			// ${
+			// 	paymentDate
+			// 		? `<div class="text-muted">Ngày đóng tiền: ${paymentDate}</div>`
+			// 		: ""
+			// }
+		}
+
+		function renderAccordion(renderHeader, renderBody) {
+			return (e, i) => {
+				return `<div class="accordion-item">
+					<div class="accordion-header h2" id="header-${i}">
+						<button class="accordion-button collapsed" type="buttom" data-bs-toggle="collapse" data-bs-target="#collapse-${i}" aria-controls="collapse-${i}">
+							${renderHeader(e)}
+						</button>
+					</div>
+					<div id="collapse-${i}" class="accordion-collapse collapse" aria-labelledby="header-${i}" data-bs-parent="#studyAccordion">
+						<div class="accordion-body">
+							${renderBody(e)}
+						</div>
+					</div>
+				</div>`;
+			};
 		}
 	}
 }

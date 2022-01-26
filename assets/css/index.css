@@ -1,21 +1,25 @@
 /* width */
-.list-group::-webkit-scrollbar {
+.list-group::-webkit-scrollbar,
+.offcanvas-body::-webkit-scrollbar {
 	width: 10px;
 }
 
 /* Track */
-.list-group::-webkit-scrollbar-track {
+.list-group::-webkit-scrollbar-track,
+.offcanvas-body::-webkit-scrollbar-track {
 	background: #f1f1f1;
 }
 
 /* Handle */
-.list-group::-webkit-scrollbar-thumb {
-	background: #888;
-	transition: background 300ms;
+.list-group::-webkit-scrollbar-thumb,
+.offcanvas-body::-webkit-scrollbar-thumb {
+	background-color: #888;
+	transition: background-color 500ms;
 }
 
 /* Handle on hover */
-.list-group::-webkit-scrollbar-thumb:hover {
+.list-group::-webkit-scrollbar-thumb:hover,
+.offcanvas-body::-webkit-scrollbar-thumb:hover {
 	background: #555;
 }
 
@@ -113,31 +117,30 @@ ul {
 	background-color: #555;
 }
 
-#menu > ul > li:hover > span {
+#menu > ul > li:hover > i {
 	transform: translateY(0);
 }
 
-#menu > ul > li:hover > img {
+#menu > ul > li:hover > span {
 	transform: translateY(0);
 	opacity: 0.75;
 }
 
 #menu > ul > li > span {
 	user-select: none;
+	opacity: 0;
 	transform: translateY(-13px);
-	transition: transform 300ms;
+	transition: opacity 300ms, transform 300ms;
 }
 
-#menu > ul > li > img {
-	opacity: 0;
-	width: 24px;
-	height: 24px;
+#menu > ul > li > i {
 	transform: translateY(13px);
-	transition: opacity 300ms, transform 300ms;
+	transition: transform 300ms;
 }
 
 .user {
 	text-align: center;
+	background: #eee;
 }
 
 .schedule {
@@ -153,18 +156,21 @@ ul {
 }
 
 .schedule > .listOfDays > li {
-	padding: 0.25rem 0rem;
+	/* padding: 0.25rem 0rem; */
 	flex-grow: 1;
-	border: 1px solid #888;
+	/* border: 1px solid #888; */
 	text-align: center;
 	cursor: pointer;
 	user-select: none;
-	transition: color 300ms, background-color 300ms;
+	transition: color 300ms, background-color 300ms, border 100ms,
+		font-weight 300ms;
 }
 
 .schedule > .listOfDays > li.active {
-	color: #fff;
-	background-color: #333;
+	/* color: #fff;
+	background-color: #333; */
+	border-bottom: 3px solid #333;
+	font-weight: 700;
 }
 
 .schedule > .renderData {
@@ -301,4 +307,14 @@ ul {
 .progress-bar {
 	-webkit-transition: none !important;
 	transition: none !important;
+}
+
+.settings button:first-child {
+	border-top-width: 1px;
+}
+
+.settings button:last-child {
+	margin-top: auto;
+	border-top-width: 1px;
+	border-bottom-width: 1px !important;
 }
