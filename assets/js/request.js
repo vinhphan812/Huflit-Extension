@@ -1,3 +1,9 @@
+const URL_DATA = {
+	URI: { path: "", query: {}, host: "portal.huflit.edu.vn" },
+	form: "",
+	json: false,
+};
+
 class API_SERVER {
 	host = "portal.huflit.edu.vn";
 	isRender = false;
@@ -13,99 +19,113 @@ class API_SERVER {
 		});
 	}
 
-	requestServer(
-		data = { link, URI: { path: "", query: {} }, form: "", json: false }
-	) {
-		const url =
-				data.link ||
-				makeURL({
-					host: data.URI.host || this.host,
-					path: data.URI.path,
-					query: data.URI.query,
-				}),
-			option = {
-				method:
-					typeof data.form == "object" ||
-					(typeof data.form == "string" && data.form.length)
-						? "POST"
-						: "GET",
-				mode: "no-cors",
-				headers: {
-					"Content-Type": data.json
-						? "application/json"
-						: "application/x-www-form-urlencoded",
-				},
-				credentials: "same-origin",
-			};
+	//TODO: send request to server
+	requestServer(data = URL_DATA) {
+		const isPOST = typeof data.form == "object",
+			url =
+				typeof data.URI == "string"
+					? data.URI
+					: makeURL({
+							...data.URI,
+							host: data.URI.host || this.host,
+					  });
 
-		if (data.form)
+		const option = {
+			method: isPOST ? "POST" : "GET",
+			mode: "cors",
+			headers: {
+				"Content-Type":
+					(data.json
+						? "application/json"
+						: "application/x-www-form-urlencoded") +
+					"; charset=UTF-8",
+			},
+			credentials: "same-origin",
+		};
+
+		//? formData for body
+		if (data.form) {
 			option.body = data.json
 				? JSON.stringify(data.form)
 				: new URLSearchParams(data.form).toString();
+		}
+
+		//? send request
 		return fetch(url, option);
 	}
 
 	requestLoad(requestOption, query) {
-		return new Promise(async (resolve, reject) => {
-			let res = await this.requestServer(requestOption);
+		return new Promise(async (resolve) => {
+			const res = await this.requestServer(requestOption);
 			await loadHtml(res, query);
 			resolve(res);
 		});
 	}
 
+	//TODO: hàm yêu cầu đăng nhập đến người dùng Extension chrome
 	auth(callback) {
+		//TODO: nếu tab đăng nhập tồn tại thì mở lên không cần tạo tab mới
 		if (this.winId)
 			return chrome.windows.update(this.winId, { focused: true });
-		else
-			return new Promise(async (resolve, reject) => {
-				checkAuth = checkAuth.bind(this);
-				closeAuth = closeAuth.bind(this);
-				callback = callback.bind(this);
 
-				const win = await popupAuthTab(),
-					homePath = "https://portal.huflit.edu.vn/Home",
-					loginTab = win.tabs[0].id;
+		return new Promise(async (resolve) => {
+			//TODO: tạo ràng buộc với cha
+			checkAuthSuccess = checkAuthSuccess.bind(this);
+			closeAuth = closeAuth.bind(this);
+			callback = callback.bind(this);
 
-				this.winId = win.id;
+			const win = await popupAuthTab(),
+				homePath = "https://portal.huflit.edu.vn/Home",
+				loginTab = win.tabs[0].id;
 
-				chrome.tabs.onRemoved.addListener(closeAuth);
-				chrome.tabs.onUpdated.addListener(checkAuth);
+			//TODO: lưu trữ window id
+			this.winId = win.id;
 
-				function popupAuthTab() {
-					return chrome.windows.create({
-						url: "https://portal.huflit.edu.vn/Login",
-						height: 800,
-						width: 500,
-						top: Math.round(screen.availHeight / 2 - 400),
-						left: Math.round(screen.availWidth / 2 - 250),
-						type: "popup",
-					});
-				}
+			//TODO: lắng nghe sự kiện kiểm tra TAB (hàm của google ráp callback vào là dùng)
+			chrome.tabs.onRemoved.addListener(closeAuth);
+			chrome.tabs.onUpdated.addListener(checkAuthSuccess);
 
-				function closeAuth(tabId) {
-					if (tabId != loginTab) return;
-					this.winId = "";
+			//TODO: hàm tạo ra cửa sổ yêu cầu đăng nhập
+			function popupAuthTab() {
+				return chrome.windows.create({
+					url: "https://portal.huflit.edu.vn/Login",
+					height: 800,
+					width: 500,
+					top: Math.round(screen.availHeight / 2 - 400),
+					left: Math.round(screen.availWidth / 2 - 250),
+					type: "popup",
+				});
+			}
+
+			//TODO: callback kiểm tra trạng thái đăng nhập thành công
+			function checkAuthSuccess(tabId, { status, url }, tab) {
+				if (status == "loading" && url == homePath) {
+					chrome.windows.remove(this.winId);
 					clearEvent();
-					return resolve(false);
+					//TODO: sau khi đăng nhập thành công, thực hiện tác vụ tiếp theo
+					callback();
+					resolve(true);
 				}
+			}
 
-				function checkAuth(tabId, { status, url }, tab) {
-					if (status == "loading" && url == homePath) {
-						chrome.windows.remove(this.winId);
-						clearEvent();
-						callback();
-						resolve(true);
-					}
-				}
-				function clearEvent() {
-					chrome.tabs.onRemoved.removeListener(closeAuth);
-					chrome.tabs.onUpdated.removeListener(checkAuth);
-				}
-			});
+			//TODO: callback khi sự kiện đóng tab xảy ra
+			function closeAuth(tabId) {
+				if (tabId != loginTab) return;
+				this.winId = "";
+				clearEvent();
+				return resolve(false);
+			}
+
+			//TODO: hàm gỡ bỏ sự kiện khi đóng authentication tab hoặc quá trình đăng nhập kết thúc
+			function clearEvent() {
+				chrome.tabs.onRemoved.removeListener(closeAuth);
+				chrome.tabs.onUpdated.removeListener(checkAuthSuccess);
+			}
+		});
 	}
 
 	checkCookie() {
-		return new Promise(async (resolve, reject) => {
+		return new Promise(async (resolve) => {
 			await this.requestLoad({
 				URI: { path: "/Home/info" },
 			});
@@ -127,28 +147,34 @@ class API_SERVER {
 	}
 
 	getSchedule() {
-		return new Promise(async (resolve, reject) => {
-			//check cookie expire
+		return new Promise(async (resolve) => {
+			//TODO: check cookie expire
 			if (!(await this.checkCookie()))
 				return this.auth(this.getSchedule);
 
 			let { year, term, week } = this.store.get();
 
+			//TODO: check week, term, year contain
 			if (!year || !term || !week) {
 				await this.requestLoad({
 					URI: { path: "/Home/Schedules" },
 				});
 
-				const select = $("#load select");
+				const [yearOpt, termOpt, weekOpt] = $("#load select");
+				const weeks = [];
+				$("#load select#Week > option").each((i, e) =>
+					weeks.push({ value: e.value, name: e.innerText })
+				);
 
-				year = getOptionVal(select[0]);
-				term = getOptionVal(select[1]);
-				week = +getOptionVal(select[2]);
+				year = getValue(yearOpt);
+				term = getValue(termOpt);
+				week = +getValue(weekOpt);
 
-				this.store.set({ year, term, week });
+				this.store.set({ year, term, week, weeks });
 			}
 			const schedule = [];
 
+			//TODO: load schedule
 			await this.requestLoad({
 				URI: {
 					path: "/Home/DrawingSchedules",
@@ -160,28 +186,29 @@ class API_SERVER {
 				},
 			});
 
-			let [dateStart, dateEnd] = $("#load strong")
-				.text()
-				.match(/\d{2}\/\d{2}\/\d{4}/g);
+			//TODO: check end date and update week
+			const duration = $("#load strong").text();
+			let [, dateEnd] = duration.match(/\d{2}\/\d{2}\/\d{4}/g);
+
 			if (checkNextWeek(dateEnd)) {
 				this.store.set({ week: this.store.get("week") + 1 });
-				return this.getSchedule();
-			}
+				const res = await this.getSchedule();
 
+				//? nếu tìm thấy trả về kết quả
+				if (res.success && res.data.length) return resolve(res);
+
+				//? nếu không tìm thấy thời khóa biểu thì cập nhật năm, học kì, tuần
+				this.store.set({ term: null });
+				return;
+			}
+			//TODO: HTML schedule => JSON Array schedule
 			$("#load .Content").each(function () {
 				schedule.push(new Subject($(this)));
 			});
 
-			// TODO: dữ liệu schedule trống => reset term, year, week và call lại getSchedule
-			if (!schedule.length) {
-				// chỉ cần set một tham số  sai hàm check đã có thể nhận
-				this.store.set({ term: null });
-				this.getSchedule();
-			}
+			this.store.set({ schedule, duration });
 
-			this.store.set({ schedule });
-
-			this.render.Schedule(schedule);
+			this.render.Schedule(schedule, duration);
 
 			resolve({ success: true, data: schedule });
 		});
@@ -195,9 +222,9 @@ class API_SERVER {
 		}
 
 		function splitText(query, selectIndex = 0, reg = / \(|: /g) {
-			return query.text().split(reg)[selectIndex] || "Unknown";
+			return query.text().split(reg)[selectIndex] || "Không xác định";
 		}
-		function getOptionVal(select) {
+		function getValue(select) {
 			return $("option:selected", select).val();
 		}
 		function checkNextWeek(curDate) {
@@ -207,8 +234,14 @@ class API_SERVER {
 		}
 	}
 
-	getMark() {
+	getScheduleById(id) {
 		return new Promise(async (resolve, reject) => {
+			resolve();
+		});
+	}
+
+	getMark() {
+		return new Promise(async (resolve) => {
 			const check = await this.checkCookie();
 			if (!check) return this.auth(this.getMark);
 
@@ -243,11 +276,6 @@ class API_SERVER {
 			resolve({ success: true, data: res });
 		});
 
-		function filterContain(data, check) {
-			return data.filter((item) => {
-				if (check != item.name) return;
-			});
-		}
 		function Subject(data) {
 			const survey = $("a", data[4]).attr("href"),
 				numberScore = $(data[4]).text().trim(),
@@ -276,7 +304,7 @@ class API_SERVER {
 	getDetailMark(detail) {
 		const listScore = [],
 			select = "tbody>tr:not(:first)";
-		return new Promise(async (resolve, reject) => {
+		return new Promise(async (resolve) => {
 			try {
 				await this.requestLoad(
 					{ URI: { path: "/Home/ShowMarkDetail/" + detail } },
@@ -303,8 +331,8 @@ class API_SERVER {
 		const host = "esurvey.huflit.edu.vn",
 			path = "/FrontEnd/VoteRatingTemplate/Vote.aspx/GetData";
 
-		return new Promise(async (resolve, reject) => {
-			if (url)
+		return new Promise(async (resolve) => {
+			if (!url)
 				return resolve({
 					success: false,
 					msg: "Không tìm thấy đường dẫn đánh giá",
@@ -314,7 +342,7 @@ class API_SERVER {
 			);
 			const params = Object.fromEntries(urlSearchParams.entries());
 
-			await this.requestServer({ link: url });
+			await this.requestServer({ URI: url });
 
 			const data = await (
 				await this.requestServer({
@@ -331,7 +359,7 @@ class API_SERVER {
 
 			var res = await (
 				await this.requestServer({
-					link: url.split("?")[0] + "/SendAnswer",
+					URI: url.split("?")[0] + "/SendAnswer",
 					form: {
 						answerObject: rating(JSON.parse(data.d)),
 						informationContent: "{}",
@@ -385,7 +413,7 @@ class API_SERVER {
 	}
 
 	getExam() {
-		return new Promise(async (resolve, reject) => {
+		return new Promise(async (resolve) => {
 			// check login
 			const check = await this.checkCookie();
 			if (!check) return this.auth(this.getExam);
@@ -429,7 +457,7 @@ class API_SERVER {
 	}
 
 	getStudyProgramCode() {
-		return new Promise(async (resolve, reject) => {
+		return new Promise(async (resolve) => {
 			await this.requestLoad({ URI: { path: "/Home/Marks" } });
 			const program = $("#load #ddlStudyProgram>option").val();
 			this.store.set({ program });
@@ -500,7 +528,7 @@ class API_SERVER {
 				deadline: /\d{2}\/\d{2}\/\d{4}/g,
 			},
 			empty = [""];
-		return new Promise(async (resolve, reject) => {
+		return new Promise(async (resolve) => {
 			if (!(await this.checkCookie()))
 				return this.auth(this.getFinance);
 

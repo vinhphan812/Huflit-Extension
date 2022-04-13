@@ -5,14 +5,14 @@ const api = new API_SERVER();
 (async () => {
 	await api.init();
 
-	const { name, schedule } = api.store.get();
+	const { name, schedule, duration } = api.store.get();
 
-	//? name contain => render main
+	//? contain user data => render main
 	if (name) {
-		api.render.Main(name, schedule);
+		api.render.Main(name, schedule, duration);
 		if (!schedule.length && (await api.checkCookie())) api.getSchedule();
 	} else {
-		//? render authentication page
+		//? render authentication
 		api.render.Login();
 	}
 })();

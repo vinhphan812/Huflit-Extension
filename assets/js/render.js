@@ -16,6 +16,12 @@ class Render {
 			icon: "cash-coin",
 			isAction: true,
 		},
+		{
+			id: "scheduleById",
+			name: "Tra cứu thời khóa biểu",
+			icon: "calendar-event",
+			isAction: true,
+		},
 		// {
 		// 	id: "report",
 		// 	name: "Báo cáo sự cố",
@@ -90,7 +96,7 @@ class Render {
 
 		$("#login").click(() => api.auth(api.getSchedule));
 	}
-	Main(name = "", schedules = []) {
+	Main(name = "", schedules = [], duration) {
 		const list = this.menu.map(
 			(item, index) =>
 				`<li id="${item}">
@@ -119,7 +125,7 @@ class Render {
 		$("#Exam").click(() => this.historyTab != "exam" && api.getExam());
 
 		if (schedules.length) {
-			this.Schedule(schedules);
+			this.Schedule(schedules, duration);
 		}
 
 		function effectLogin() {
@@ -130,7 +136,7 @@ class Render {
 			$("#box-title").removeClass("col");
 		}
 	}
-	Schedule(schedules) {
+	Schedule(schedules, duration) {
 		filter = filter.bind(this);
 		renderSubject = renderSubject.bind(this);
 
@@ -139,6 +145,7 @@ class Render {
 			.map((item, index) => `<li id="${index}">${item}</li>`)
 			.join("");
 		let html = `<div class="schedule">
+					<div class="alert-primary">${duration}</div>
 					<ul class="listOfDays">${listOfDays}</ul>
 					<ul class="renderData"></ul>
 				</div>`;
@@ -414,6 +421,12 @@ class Render {
 					case "finance":
 						html = await finance();
 						break;
+					case "scheduleById":
+						html = `
+								<input type='text' class='form-control' id='idStudent' placeholder='Mã lớp, giảng viên, sinh viên'/>
+								<button class="btn btn-primary my-2">Tra cứu</button>
+							`;
+						break;
 					case "report":
 						// html = `<div class="alert alert-warning">Chỉ sử dụng tính năng này khi có lỗi xảy ra</div>
 						// 	<div>Gửi báo cáo đến thời khóa biểu</div>
@@ -433,6 +446,9 @@ class Render {
 				console.log(error);
 				return "<div class='h-100 d-flex justify-content-center align-items-center'><div class='text-muted fs-3'>Xảy Ra Lỗi!</div></div>";
 			}
+		}
+		async function optionWeekTerm() {
+			const res = await api.getWeekInTerm();
 		}
 		async function studyProgram() {
 			const res = await api.getStudyProgram();
@@ -456,7 +472,7 @@ class Render {
 						practical,
 						faculty,
 					} = item;
-					return `<div id="${id}" class="alert alert-dark">
+					return `<div id="${id}" class="alert alert-primary">
 								<div class="h5">${name}</div>
 								<div class="text-muted">${faculty}</div>
 								<div class="d-flex justify-content-between fs-6">
