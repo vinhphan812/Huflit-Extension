@@ -18,6 +18,15 @@
 -    Exam schedule.
 -    Login with Microsoft account.
 
+### [v0.0.3](../../releases/tag/v0.0.3)
+-    Update Theme.
+-    Show finance and study program.
+
+### [v0.0.4](../../releases/tag/v0.0.4)
+-    Fix bugs survey teacher.
+-    Fix bugs render schedule.
+-    Optimization app.
+-    Search Student, Teacher by id.
 ## Installation
 
 ```bash
