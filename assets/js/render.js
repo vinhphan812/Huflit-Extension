@@ -1,5 +1,4 @@
 class Render {
-	root = $("#root");
 	menu = ["Schedule", "Mark", "Exam", "Setting"];
 	vnMenu = ["TKB", "Điểm", "Lịch Thi", "Xem thêm"];
 	menuIcon = ["calendar3", "award", "card-list", "three-dots"];
@@ -62,7 +61,8 @@ class Render {
 		start: (t) => this.time[t].s,
 		end: (t) => this.time[t].e,
 	};
-	constructor(store) {
+	constructor(store, root = $("#root")) {
+		this.root = root;
 		this.historyTab = "";
 		this.store = store;
 		window.addEventListener("offline", (e) => {
@@ -115,9 +115,11 @@ class Render {
 			.addClass("opacity");
 
 		// $("#Logout").click(() => api.Logout());
-		$("#Setting").click(
-			() => this.historyTab != "setting" && this.Setting()
-		);
+		$("#Setting").click(async () => {
+			if (!(await api.checkCookie())) return api.auth(this.Setting);
+
+			this.historyTab != "setting" && this.Setting();
+		});
 		$("#Schedule").click(
 			() => this.historyTab != "schedule" && api.getSchedule()
 		);
@@ -136,7 +138,7 @@ class Render {
 			$("#box-title").removeClass("col");
 		}
 	}
-	Schedule(schedules, duration) {
+	Schedule(schedules, duration, root = this.root) {
 		filter = filter.bind(this);
 		renderSubject = renderSubject.bind(this);
 
@@ -150,7 +152,7 @@ class Render {
 					<ul class="renderData"></ul>
 				</div>`;
 
-		this.root.html(html);
+		root.html(html);
 		this.historyTab = "schedule";
 
 		const $listOfDays = $(".listOfDays"),
@@ -196,7 +198,7 @@ class Render {
 						</div>
 					<div class="info">
 						<div class="name">${MonHoc}</div>
-						<small class="teacher">👨‍🏫 ${GiaoVien}</small>
+						${GiaoVien ? `<small class="teacher">👨‍🏫 ${GiaoVien}</small>` : ""}
 					</div>
 					<small class="room">${Phong}</small>
 				</div>
@@ -362,35 +364,40 @@ class Render {
 		}
 	}
 	Setting() {
-		const html = `
-		<div class="list-group list-group-flush w-100 h-100 mt-4 settings"></div>
+		optionWeekTerm = optionWeekTerm.bind(this);
+		searchClick = searchClick.bind(this);
 
-		<div class="offcanvas offcanvas-bottom h-100" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
-			<div class="offcanvas-header">
-				<div class="name h3 m-0">
-					<i class="bi bi-palette"></i>
-					<span>Theme</span>
+		let offcanvas;
+
+		const html = `<div class="list-group list-group-flush w-100 h-100 mt-4 settings"></div>
+			<div class="offcanvas offcanvas-bottom h-100" tabindex="-1" id="offcanvasRight" aria-labelledby="offcanvasRightLabel">
+				<div class="offcanvas-header">
+					<div class="name h3 m-0">
+						<i class="bi bi-palette"></i>
+						<span>Theme</span>
+					</div>
+					<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
 				</div>
-			  	<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-			</div>
-			<div class="offcanvas-body"></div>
-		</div>`;
+				<div class="offcanvas-body d-flex flex-column"></div>
+			</div>`;
+
 		this.root.html(html);
+
 		this.historyTab = "setting";
 		//#region  init
 		const menuSettings = this.settingMenu.map(
 			({ id, name, icon, isAction }) => `
-				<button id="${id}" class="list-group-item list-group-item-action fs-5 ${
+		<button id="${id}" class="list-group-item list-group-item-action fs-5 ${
 				isAction ? "btn-offcanvas" : id
 			}">
-					<i class="me-2 bi bi-${icon}"></i>
-					<span>${name}</span>
-				</button>`
+			<i class="me-2 bi bi-${icon}"></i>
+			<span>${name}</span>
+		</button>`
 		);
 
 		$(".settings").html(menuSettings);
 
-		const offcanvas = new bootstrap.Offcanvas($("#offcanvasRight")[0]);
+		offcanvas = new bootstrap.Offcanvas($("#offcanvasRight")[0]);
 		$(".settings>button:not(.logout)").click(async function () {
 			const btn = $(this);
 
@@ -409,6 +416,10 @@ class Render {
 			$(".offcanvas-body").html(page);
 		});
 		$("button.logout").click(() => api.Logout());
+
+		$("#offcanvasRight").css("visibility", "hidden").removeClass("show");
+		$(".offcanvas-backdrop.fade.show").remove();
+
 		//#endregion
 
 		async function checkTab(id) {
@@ -422,10 +433,26 @@ class Render {
 						html = await finance();
 						break;
 					case "scheduleById":
-						html = `
-								<input type='text' class='form-control' id='idStudent' placeholder='Mã lớp, giảng viên, sinh viên'/>
-								<button class="btn btn-primary my-2">Tra cứu</button>
-							`;
+						html = `<div class="d-flex align-items-center">
+									<input type='text' class='form-control me-1 w-50' id='idStudent' placeholder='Mã sinh viên, giảng viên' list="datalistOptions" required/>
+									<datalist id="datalistOptions">
+										${await loadProfessors()}
+									</datalist>
+									<select class="form-select w-25 me-1" aria-label="week" id="week">
+										${await optionWeekTerm()}
+									</select>
+									<button class="btn btn-primary my-2" id="search">Tra cứu</button>
+								</div>
+								<div class="d-flex flex-column justify-content-center align-items-center flex-grow-1" id="schedule"></div>`;
+
+						const reg = setInterval(() => {
+							if (!$("#search").length) return;
+
+							$("#search").click(searchClick);
+
+							clearInterval(reg);
+						}, 10);
+
 						break;
 					case "report":
 						// html = `<div class="alert alert-warning">Chỉ sử dụng tính năng này khi có lỗi xảy ra</div>
@@ -447,8 +474,33 @@ class Render {
 				return "<div class='h-100 d-flex justify-content-center align-items-center'><div class='text-muted fs-3'>Xảy Ra Lỗi!</div></div>";
 			}
 		}
+		async function searchClick(e) {
+			const regsCheck = /\d{2}dh\d{6}|\d{5}|\D{2}\d{4}/i;
+			const [id] = $("#idStudent").val().split(" - ");
+			const week = $("#week").val();
+			if (!id) {
+				console.log("Vui Lòng điền thông tin cần tra cứu!");
+				return;
+			}
+			if (!regsCheck.test(id)) {
+				console.log("Mã số định đạng không đúng");
+				return;
+			}
+
+			const schedule = await api.getScheduleById(id, week);
+
+			this.Schedule(schedule.data, schedule.name, $("#schedule"));
+		}
+		async function loadProfessors() {
+			const professors = await api.getListProfessor();
+
+			return professors.map((e) => `<option value="${e}">`).join("");
+		}
 		async function optionWeekTerm() {
-			const res = await api.getWeekInTerm();
+			const weeks = await api.getWeeks();
+			return weeks
+				.map((e, i) => `<option value="${e}">${i + 1}</option>`)
+				.join("");
 		}
 		async function studyProgram() {
 			const res = await api.getStudyProgram();
@@ -511,14 +563,14 @@ class Render {
 			</div>`;
 			function renderHeader({ year, term, fee, paid, debt }) {
 				return `<div class="fw-bold me-5">${year} ${term}</div><div class="${
-					fee == paid ? "text-muted" : "text-danger"
+					parseNumber(debt) <= 0 ? "text-muted" : "text-danger"
 				}">${fee}</div>`;
 			}
 			function renderBody({ debt, data, deadline }) {
 				return `<div class="badge mb-2 ${
-					debt != "0" ? "bg-danger" : ""
+					parseNumber(debt) > 0 ? "bg-danger" : ""
 				}">
-						${debt != "0" ? `Hạn chót: ${deadline}` : ""}
+						${parseNumber(debt) > 0 ? `Hạn chót: ${deadline}` : ""}
 					</div>
 						<ul class="list-group">
 						${data.map(renderItem).join("")}
@@ -530,30 +582,35 @@ class Render {
 					paid,
 					debt,
 				}) {
+					debt = parseNumber(debt);
 					return `<li class="list-group-item">
 						<div class="d-flex align-items-center">
 							<div class="flex-grow-1 d-flex flex-column justify-content-between">
 								<div class="h6">${name}</div>
 								<div class="fw-bold">${fee}</div>
 								${
-									debt != "0" && paid != "0"
+									debt == 0
+										? ""
+										: debt > 0 && paid != "0"
 										? `<div class="text-danger">Đóng thiếu: ${debt}</div>`
-										: ""
+										: `<div class="text-info">Đóng dư: ${debt}</div>`
 								}
 								
 							</div>
-							<div class="badge ${debt != "0" ? "bg-danger" : "bg-success"}">
-									<i class="fs-6 bi bi-${debt != "0" ? "x" : "check"}"></i>						
+							<div class="badge ${debt > 0 ? "bg-danger" : "bg-success"}">
+									<i class="fs-6 bi bi-${debt > 0 ? "x" : "check"}"></i>						
 							</div>
 						</div>
 					</li>`;
 				}
 			}
-			// ${
-			// 	paymentDate
-			// 		? `<div class="text-muted">Ngày đóng tiền: ${paymentDate}</div>`
-			// 		: ""
-			// }
+
+			function checkEnough(fee, paid) {
+				return parseNumber(fee) <= parseNumber(paid);
+			}
+			function parseNumber(str) {
+				return Number(str.replace(/,/g, ""));
+			}
 		}
 
 		function renderAccordion(renderHeader, renderBody) {

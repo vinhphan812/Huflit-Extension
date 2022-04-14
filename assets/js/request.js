@@ -104,6 +104,7 @@ class API_SERVER {
 					clearEvent();
 					//TODO: sau khi đăng nhập thành công, thực hiện tác vụ tiếp theo
 					callback();
+					this.winId = "";
 					resolve(true);
 				}
 			}
@@ -161,16 +162,12 @@ class API_SERVER {
 				});
 
 				const [yearOpt, termOpt, weekOpt] = $("#load select");
-				const weeks = [];
-				$("#load select#Week > option").each((i, e) =>
-					weeks.push({ value: e.value, name: e.innerText })
-				);
 
 				year = getValue(yearOpt);
 				term = getValue(termOpt);
 				week = +getValue(weekOpt);
 
-				this.store.set({ year, term, week, weeks });
+				this.store.set({ year, term, week });
 			}
 			const schedule = [];
 
@@ -234,9 +231,141 @@ class API_SERVER {
 		}
 	}
 
-	getScheduleById(id) {
+	getScheduleById(id = "", week) {
+		const regs =
+			/-Môn: |-Lớp: |-Tiết: |-Phòng: |-GV: |-Đã học: |-Nội dung: |-Đã dạy: |-Mã LHP: |-Nội dung : |-Phòng :/i;
+		const URL = [
+			"/Home/DrawingStudentSchedule",
+			"/Home/DrawingProfessorSchedule",
+			"/Home/DrawingClassStudentSchedules_Mau2",
+		];
 		return new Promise(async (resolve, reject) => {
-			resolve();
+			if (id == "") reject({ success: false, msg: "⚠️ ID is Null." });
+			extractData = extractData.bind(this);
+			let f;
+			try {
+				if (!(await this.checkCookie())) return this.auth();
+
+				let { year, term } = this.store.get();
+
+				let p = {
+						StudentId: id,
+						YearId: year,
+						TermId: term,
+						WeekId: week,
+						YearStudy: year,
+						Week: week,
+					},
+					t = 0;
+				if (id.length < 7) {
+					p[isType(id)] = id;
+					t = id.length == 5 ? 1 : 2;
+				}
+
+				await this.requestLoad({
+					URI: { path: URL[t], query: p },
+				});
+				const r = [];
+
+				const name = getText($("#load span")[1], ":")[1].trim(),
+					d = $("#load tr:not(:first-child)");
+
+				// ? Check user valid
+				if (!name) {
+					const msg =
+						id.length == 5
+							? "⚠️ Không Tồn Tại Giảng Viên Này...!"
+							: "⚠️ Không Tồn Tại Sinh Viên Này...!";
+					resolve({
+						success: false,
+						msg: msg,
+					});
+				}
+
+				await d.each(async (i, e) => {
+					const data = await extractData(i, e);
+					r.push(...data);
+				});
+				resolve({
+					success: true,
+					data: r,
+					name: name.replace("  ", " "),
+				});
+			} catch (error) {
+				console.log("log" + error);
+				if (!error.success) return reject(error);
+			}
+			async function extractData(index, e) {
+				const render = this.render;
+				let els = $(e).children(),
+					res = [];
+
+				els.each(function (j, el) {
+					if (j == 0) return;
+
+					if (id.length == 5) {
+						if ($(el).children().length < 7) return;
+
+						var s = $(el).html().trim().split("<hr>");
+
+						for (var i = 0; i < s.length; i++) {
+							var ex = s[i]
+								.replace(/<br>/g, "")
+								.replace("-&gt;", "-")
+								.split(regs);
+							res.push(
+								new SubjectP(
+									ex,
+									render.dayOfWeek[index]
+								)
+							);
+						}
+					} else {
+						$(el)
+							.find("div")
+							.each((i, e) =>
+								res.push(
+									new SubjectS(
+										getText(e, regs),
+										render.dayOfWeek[index]
+									)
+								)
+							);
+					}
+				});
+				return res;
+			}
+
+			function checkUpdate(day, id) {
+				return day == 6 && id.length == 10;
+			}
+
+			function SubjectP(val, thu) {
+				this.Thu = thu;
+				this.MonHoc = val[1].split(" (")[0].replace("amp;", "");
+				this.LHP = val[2];
+				this.Lop = val[3];
+				this.TietHoc = val[4];
+				this.DaDay = val[5];
+				this.Phong = val[6];
+				this.NoiDung = val[7];
+			}
+			function SubjectS(val, thu) {
+				this.Thu = thu;
+				this.MonHoc = val[1].split("(")[0];
+				this.Lop = val[2];
+				this.TietHoc = val[3].replace("->", "-");
+				this.Phong = val[4];
+				this.GiaoVien = val[5];
+				this.DaHoc = val[6];
+				this.NoiDung = val[7];
+			}
+			function getText(el, reg) {
+				return $(el).text().split(reg);
+			}
+			function isType(id) {
+				return id.length == 5 ? "ProfessorID" : "ClassStudentID";
+			}
 		});
 	}
 
@@ -471,7 +600,7 @@ class API_SERVER {
 				let program = this.store.get("program");
 
 				if (!(await this.checkCookie()))
-					return this.auth(this.getStudyProgram);
+					return this.auth(() => this.render.Setting());
 
 				if (!program) program = await this.getStudyProgramCode();
 
@@ -530,7 +659,7 @@ class API_SERVER {
 			empty = [""];
 		return new Promise(async (resolve) => {
 			if (!(await this.checkCookie()))
-				return this.auth(this.getFinance);
+				return this.auth(() => this.render.Setting());
 
 			await this.requestLoad({
 				URI: { path: "/Home/HienThiPhiHocPhan" },
@@ -604,8 +733,48 @@ class API_SERVER {
 					temp.data = [];
 				}
 			});
-
 			resolve(res);
+		});
+	}
+
+	getWeeks() {
+		return new Promise(async (resolve, reject) => {
+			try {
+				if (!(await this.checkCookie()))
+					return this.auth(() => this.render.Setting());
+
+				await this.requestLoad({
+					URI: { path: "/Home/Schedules" },
+				});
+
+				const weeks = [];
+				$("#load select#Week > option").each((i, e) =>
+					weeks.push(e.value)
+				);
+
+				resolve(weeks);
+			} catch (error) {
+				reject([]);
+			}
+		});
+	}
+
+	getListProfessor() {
+		return new Promise(async (resolve, reject) => {
+			if (!(await this.checkCookie()))
+				return this.auth(() => this.render.Setting());
+
+			const body = await this.requestServer({
+				URI: { path: "/Home/GetProfessorByTerm/2020-2021$HK02" },
+			});
+			var data = await body.json();
+			data = data.map(({ ProfessorID: code, ProfessorName: n }) => {
+				return `${code} - ${n
+					.split(", ")[1]
+					.split("  ")
+					.join(" ")}`;
+			});
+			resolve(data);
 		});
 	}
 
